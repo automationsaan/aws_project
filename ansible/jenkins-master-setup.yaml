@@ -1,6 +1,6 @@
 ---
 - name: Install Jenkins and OpenJDK 21 on Ubuntu 22.04+
-  hosts: all
+  hosts: jenkins-master
   become: yes
 
   tasks:
@@ -22,18 +22,15 @@
         filename: jenkins
         state: present
 
-    - name: Add Adoptium (Temurin) PPA for OpenJDK 21
-      apt_repository:
-        repo: "ppa:adoptium/ppa"
-        state: present
-
     - name: Update apt cache
       apt:
         update_cache: yes
 
-    - name: Install OpenJDK 21 (Temurin)
+    - name: Install OpenJDK 21 and fontconfig
       apt:
-        name: temurin-21-jdk
+        name:
+          - fontconfig
+          - openjdk-21-jre
         state: present
 
     - name: Install Jenkins

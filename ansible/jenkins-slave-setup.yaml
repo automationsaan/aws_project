@@ -8,9 +8,11 @@
       force_apt_get: yes 
       cache_valid_time: 3600 
 
-  - name: install java 
-    apt: 
-      name: openjdk-17-jdk
+  - name: Install OpenJDK 21 and fontconfig
+    apt:
+      name:
+        - fontconfig
+        - openjdk-21-jre
       state: present
 
   - name: download maven packages 
