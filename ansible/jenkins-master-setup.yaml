@@ -15,15 +15,15 @@
 
     - name: Add Jenkins repository key
       apt_key:
-        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
         state: present
 
-    - name: Add Jenkins repository to sources list
+    - name: Add Jenkins repository
       apt_repository:
-        repo: 'deb http://pkg.jenkins.io/debian-stable binary/'
+        repo: deb https://pkg.jenkins.io/debian-stable binary/
         state: present
 
-    - name: Update apt package index again after adding Jenkins repository
+    - name: Update apt cache after adding Jenkins repo
       apt:
         update_cache: yes
 
@@ -32,7 +32,7 @@
         name: jenkins
         state: present
 
-    - name: Start and enable Jenkins service
+    - name: Ensure Jenkins is started and enabled
       systemd:
         name: jenkins
         enabled: yes
