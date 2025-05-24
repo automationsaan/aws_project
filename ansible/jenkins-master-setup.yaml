@@ -1,3 +1,4 @@
+# Jenkins Master Playbook
 ---
 - name: Install Jenkins and OpenJDK 21 on Ubuntu 22.04+
   hosts: jenkins-master
@@ -6,14 +7,14 @@
   tasks:
     - name: Ensure keyrings directory exists
       file:
-        path: /etc/apt/keyrings
+        path: /apt/keyrings
         state: directory
         mode: '0755'
 
     - name: Download Jenkins GPG key
       get_url:
         url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
-        dest: /etc/apt/keyrings/jenkins-keyring.asc
+        dest: /apt/keyrings/jenkins-keyring.asc
         mode: '0644'
 
     - name: Add Jenkins apt repository
@@ -26,11 +27,11 @@
       apt:
         update_cache: yes
 
-    - name: Install OpenJDK 21 and fontconfig
+    - name: Install OpenJDK 21 JDK and fontconfig
       apt:
         name:
           - fontconfig
-          - openjdk-21-jre
+          - openjdk-21-jdk
         state: present
 
     - name: Install Jenkins

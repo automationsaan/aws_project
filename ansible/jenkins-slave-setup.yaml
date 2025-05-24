@@ -1,48 +1,49 @@
+# Jenkins Slave Playbook
 ---
 - hosts: jenkins-slave
   become: yes 
   tasks: 
-  - name: update ubuntu repo and cache 
-    apt: 
-      update_cache: yes 
-      force_apt_get: yes 
-      cache_valid_time: 3600 
+    - name: update ubuntu repo and cache 
+      apt: 
+        update_cache: yes 
+        force_apt_get: yes 
+        cache_valid_time: 3600 
 
-  - name: Install OpenJDK 21 and fontconfig
-    apt:
-      name:
-        - fontconfig
-        - openjdk-21-jre
-      state: present
+    - name: Install OpenJDK 21 JDK and fontconfig
+      apt:
+        name:
+          - fontconfig
+          - openjdk-21-jdk
+        state: present
 
-  - name: download maven packages 
-    get_url:
-      url: https://dlcdn.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz
-      dest: /opt
+    - name: download maven packages 
+      get_url:
+        url: https://dlcdn.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz
+        dest: /opt/apache-maven-3.9.9-bin.tar.gz
 
-  - name: extract maven packages 
-    unarchive:
-      src: /opt/apache-maven-3.9.9-bin.tar.gz
-      dest: /opt 
-      remote_src: yes
+    - name: extract maven packages 
+      unarchive:
+        src: /opt/apache-maven-3.9.9-bin.tar.gz
+        dest: /opt/
+        remote_src: yes
 
-  - name: install docker 
-    apt: 
-      name: docker.io 
-      state: present
+    - name: install docker 
+      apt: 
+        name: docker.io 
+        state: present
 
-  - name: start docker services 
-    service: 
-      name: docker 
-      state: started 
-  
-  - name: give 777 permissions on /var/run/docker.sock
-    file: 
-      path: /var/run/docker.sock
-      state: file 
-      mode: 0777
+    - name: start docker services 
+      service: 
+        name: docker 
+        state: started 
+    
+    - name: give 777 permissions on /run/docker.sock
+      file: 
+        path: /run/docker.sock
+        state: file 
+        mode: 0777
 
-  - name: start docker on boot time 
-    service: 
-      name: docker 
-      enabled: yes 
+    - name: start docker on boot time 
+      service: 
+        name: docker 
+        enabled: yes
