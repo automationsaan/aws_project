@@ -4,7 +4,7 @@ provider "aws" {
 
 resource "aws_instance" "demo-server" {
   ami                    = "ami-075686beab831bb7f"
-  instance_type          = "t2.micro"
+  instance_type          = "t2.small"  //updated to t2.small to increase speed
   key_name               = "automationsaan"
   vpc_security_group_ids = [aws_security_group.demo-sg.id] // Use the security group ID
   subnet_id              = aws_subnet.automationsaan-public-subnet-01.id
