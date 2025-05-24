@@ -1,6 +1,6 @@
 ---
 - hosts: jenkins-slave
-  become: true 
+  become: yes 
   tasks: 
   - name: update ubuntu repo and cache 
     apt: 
@@ -15,6 +15,15 @@
         - openjdk-21-jre
       state: present
 
+# Set JAVA_HOME environment variable
+  - name: Set JAVA_HOME environment variable system-wide
+    copy:
+      dest: /etc/profile.d/java_home.sh
+      content: |
+        export JAVA_HOME=/lib/jvm/java-21-openjdk-amd64
+        export PATH=$JAVA_HOME/bin:$PATH
+      mode: '0755'
+
   - name: download maven packages 
     get_url:
       url: https://dlcdn.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz
@@ -25,6 +34,14 @@
       src: /opt/apache-maven-3.9.9-bin.tar.gz
       dest: /opt 
       remote_src: yes
+
+  - name: Set MAVEN_HOME environment variable system-wide
+    copy:
+      dest: /etc/profile.d/maven_home.sh
+      content: |
+        export MAVEN_HOME=/opt/apache-maven-3.9.9
+        export PATH=$MAVEN_HOME/bin:$PATH
+      mode: '0755'
 
   - name: install docker 
     apt: 

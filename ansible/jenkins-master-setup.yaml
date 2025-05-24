@@ -33,6 +33,15 @@
           - openjdk-21-jre
         state: present
 
+# Set JAVA_HOME environment variable
+    - name: Set JAVA_HOME environment variable system-wide
+      copy:
+        dest: /etc/profile.d/java_home.sh
+        content: |
+          export JAVA_HOME=/lib/jvm/java-21-openjdk-amd64
+          export PATH=$JAVA_HOME/bin:$PATH
+      mode: '0755'
+
     - name: Install Jenkins
       apt:
         name: jenkins
