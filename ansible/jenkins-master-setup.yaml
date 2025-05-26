@@ -1,32 +1,38 @@
 # Jenkins Master Playbook
+# This playbook provisions a Jenkins master server with Java and Jenkins.
 ---
 - name: Install Jenkins and OpenJDK 21 on Ubuntu 22.04+
   hosts: jenkins-master
   become: yes
 
   tasks:
+    # Ensure the keyrings directory exists for storing GPG keys
     - name: Ensure keyrings directory exists
       file:
         path: /apt/keyrings
         state: directory
         mode: '0755'
 
+    # Download the Jenkins GPG key for package verification
     - name: Download Jenkins GPG key
       get_url:
         url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
         dest: /apt/keyrings/jenkins-keyring.asc
         mode: '0644'
 
+    # Add the Jenkins apt repository to the system
     - name: Add Jenkins apt repository
       apt_repository:
         repo: "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
         filename: jenkins
         state: present
 
+    # Update the apt cache after adding the Jenkins repository
     - name: Update apt cache
       apt:
         update_cache: yes
 
+    # Install OpenJDK 21 and fontconfig for Java support
     - name: Install OpenJDK 21 JDK and fontconfig
       apt:
         name:
@@ -34,11 +40,13 @@
           - openjdk-21-jdk
         state: present
 
+    # Install Jenkins
     - name: Install Jenkins
       apt:
         name: jenkins
         state: present
 
+    # Ensure Jenkins service is started and enabled on boot
     - name: Ensure Jenkins is started and enabled
       systemd:
         name: jenkins

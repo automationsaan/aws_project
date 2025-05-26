@@ -1,14 +1,17 @@
 # Jenkins Slave Playbook
+# This playbook provisions a Jenkins build agent with Java, Maven, and Docker.
 ---
 - hosts: jenkins-slave
   become: yes 
   tasks: 
+    # Update the apt package index and cache
     - name: update ubuntu repo and cache 
       apt: 
         update_cache: yes 
         force_apt_get: yes 
         cache_valid_time: 3600 
 
+    # Install OpenJDK 21 and fontconfig for Java builds
     - name: Install OpenJDK 21 JDK and fontconfig
       apt:
         name:
@@ -16,33 +19,39 @@
           - openjdk-21-jdk
         state: present
 
+    # Download Maven 3.9.9 binary package
     - name: download maven packages 
       get_url:
         url: https://dlcdn.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz
         dest: /opt/apache-maven-3.9.9-bin.tar.gz
 
+    # Extract Maven to /opt
     - name: extract maven packages 
       unarchive:
         src: /opt/apache-maven-3.9.9-bin.tar.gz
         dest: /opt/
         remote_src: yes
 
+    # Install Docker for container builds
     - name: install docker 
       apt: 
         name: docker.io 
         state: present
 
+    # Start Docker service
     - name: start docker services 
       service: 
         name: docker 
         state: started 
     
+    # Set permissions on Docker socket (for Jenkins agent access)
     - name: give 777 permissions on /run/docker.sock
       file: 
         path: /run/docker.sock
         state: file 
         mode: 0777
 
+    # Enable Docker to start on boot
     - name: start docker on boot time 
       service: 
         name: docker 

@@ -1,19 +1,24 @@
+# Terraform configuration for AWS infrastructure
+# This file provisions a VPC, subnets, security group, EC2 instances, and networking resources for a DevOps project.
+
 provider "aws" {
-  region = "us-west-2"
+  region = "us-west-2" # Set the AWS region
 }
 
+# Create multiple EC2 instances for Jenkins master, build slave, and Ansible
 resource "aws_instance" "demo-server" {
-  ami                    = "ami-075686beab831bb7f"
-  instance_type          = "t2.small"  //updated to t2.small to increase speed
-  key_name               = "automationsaan"
-  vpc_security_group_ids = [aws_security_group.demo-sg.id] // Use the security group ID
-  subnet_id              = aws_subnet.automationsaan-public-subnet-01.id
-  for_each               = toset(["jenkins-master", "build-slave", "ansible"])
+  ami                    = "ami-075686beab831bb7f" # Amazon Machine Image ID
+  instance_type          = "t2.small"  # Instance type (can be changed as needed)
+  key_name               = "automationsaan" # SSH key name
+  vpc_security_group_ids = [aws_security_group.demo-sg.id] # Attach security group
+  subnet_id              = aws_subnet.automationsaan-public-subnet-01.id # Attach to public subnet
+  for_each               = toset(["jenkins-master", "build-slave", "ansible"]) # Create one instance for each role
   tags = {
     Name = "${each.key}"
   }
 }
 
+# Security group allowing SSH and Jenkins access
 resource "aws_security_group" "demo-sg" {
   name        = "demo-sg"
   description = "SSH Access"
@@ -45,18 +50,18 @@ resource "aws_security_group" "demo-sg" {
 
   tags = {
     Name = "ssh-prot"
-
   }
 }
 
+# VPC for the project
 resource "aws_vpc" "automationsaan-vpc" {
   cidr_block = "10.1.0.0/16"
   tags = {
     Name = "automationsaan-vpc"
   }
-
 }
 
+# Public subnets in two availability zones
 resource "aws_subnet" "automationsaan-public-subnet-01" {
   vpc_id                  = aws_vpc.automationsaan-vpc.id
   cidr_block              = "10.1.1.0/24"
@@ -77,6 +82,7 @@ resource "aws_subnet" "automationsaan-public-subnet-02" {
   }
 }
 
+# Internet gateway for VPC
 resource "aws_internet_gateway" "automationsaan-igw" {
   vpc_id = aws_vpc.automationsaan-vpc.id
   tags = {
@@ -84,6 +90,7 @@ resource "aws_internet_gateway" "automationsaan-igw" {
   }
 }
 
+# Route table for public subnets
 resource "aws_route_table" "automationsaan-public-rt" {
   vpc_id = aws_vpc.automationsaan-vpc.id
   route {
@@ -92,6 +99,7 @@ resource "aws_route_table" "automationsaan-public-rt" {
   }
 }
 
+# Associate public subnets with the route table
 resource "aws_route_table_association" "automationsaan-rta-public-subnet-01" {
   subnet_id      = aws_subnet.automationsaan-public-subnet-01.id
   route_table_id = aws_route_table.automationsaan-public-rt.id
