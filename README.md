@@ -65,6 +65,33 @@ ansible-playbook -i hosts jenkins-slave-setup.yaml
 sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 ```
 
+## Jenkins Slave Docker Permissions and Robustness
+
+- The Ansible playbook (`ansible/jenkins-slave-setup.yaml`) now ensures both the `jenkins` and `ubuntu` users are added to the `docker` group for secure Docker access. This covers the most common Jenkins agent user scenarios.
+- After Docker is installed, Ansible facts are refreshed to guarantee the `docker` group exists before users are added.
+- If either user's group membership changes, the playbook will automatically reboot the instance to ensure group membership is refreshed for all processes, including the Jenkins agent.
+- After running the playbook and rebooting (if triggered), the Jenkins agent user (whether `jenkins` or `ubuntu`) will have full Docker and Buildx access, verified by:
+  - `sudo -u ubuntu docker info` or `sudo -u jenkins docker info`
+  - `sudo -u ubuntu docker buildx version` or `sudo -u jenkins docker buildx version`
+  - `sudo -u ubuntu docker run --rm hello-world` or `sudo -u jenkins docker run --rm hello-world`
+
+## Troubleshooting
+
+- If you encounter Docker permission errors in Jenkins builds, ensure the agent user is in the `docker` group and that the instance has been rebooted after the group change.
+- You can manually verify with:
+  - `id ubuntu` or `id jenkins` (should list `docker` in groups)
+  - `sudo -u ubuntu docker info` or `sudo -u jenkins docker info` (should not show permission denied)
+- If the agent user is not in the `docker` group after running the playbook, re-run the playbook and ensure the reboot completes.
+
+## Playbook Idempotency
+
+- The playbook is idempotent: it only reboots if a user's group membership is newly changed, and skips unnecessary reboots otherwise.
+- All major configuration steps are safe to re-run.
+
+## Security Note
+
+- The playbook does not use insecure permissions on the Docker socket. Docker access is managed via group membership for best security practices.
+
 ## Notes
 - All infrastructure is created in the AWS region specified in `main.tf` (default: `us-west-2`).
 - Terraform state files are excluded from version control via `.gitignore`.

@@ -1,17 +1,20 @@
-# Jenkins Slave Playbook
-# This playbook provisions a Jenkins build agent with Java, Maven, and Docker.
+# Jenkins Slave Setup Playbook
+# This playbook provisions a Jenkins build agent with Java, Maven, Docker, and Docker Buildx.
+# It ensures the Jenkins agent user (e.g., 'ubuntu') has Docker access and reboots the system if needed.
+
 ---
 - hosts: jenkins-slave
-  become: yes 
-  tasks: 
-    # Update the apt package index and cache
-    - name: update ubuntu repo and cache 
-      apt: 
-        update_cache: yes 
-        force_apt_get: yes 
-        cache_valid_time: 3600 
+  become: yes
+  tasks:
 
-    # Install OpenJDK 21 and fontconfig for Java builds
+    # Update the apt package index to ensure latest package info
+    - name: Update Ubuntu repo and cache
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+        cache_valid_time: 3600
+
+    # Install Java 21 and fontconfig (required for Maven and Jenkins)
     - name: Install OpenJDK 21 JDK and fontconfig
       apt:
         name:
@@ -19,65 +22,119 @@
           - openjdk-21-jdk
         state: present
 
-    # Download Maven 3.9.9 binary package
-    - name: download maven packages 
+    # Download Maven 3.9.9 binary
+    - name: Download Maven packages
       get_url:
         url: https://dlcdn.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz
         dest: /opt/apache-maven-3.9.9-bin.tar.gz
 
     # Extract Maven to /opt
-    - name: extract maven packages 
+    - name: Extract Maven packages
       unarchive:
         src: /opt/apache-maven-3.9.9-bin.tar.gz
         dest: /opt/
         remote_src: yes
 
-    # Install Docker for container builds
-    - name: install docker 
-      apt: 
-        name: docker.io 
+    # Install Docker
+    - name: Install Docker
+      apt:
+        name: docker.io
         state: present
 
-    # Start Docker service
-    - name: start docker services 
-      service: 
-        name: docker 
-        state: started 
-    
-    # Add jenkins user to docker group for secure Docker access
+    # Start Docker service immediately
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+
+    # Refresh system facts to ensure Docker group is recognized
+    - name: Refresh facts after Docker install
+      setup:
+
+    # Ensure Jenkins user exists (optional, for flexibility)
+    - name: Ensure jenkins user exists
+      user:
+        name: jenkins
+        state: present
+
+    # Add Jenkins user to docker group (if used)
     - name: Add jenkins user to docker group
       user:
         name: jenkins
         groups: docker
         append: yes
+      register: jenkins_docker_group
 
-    # Install Docker Buildx for modern Docker builds (system-wide)
+    # Reboot if Jenkins user group membership changed
+    - name: Reboot if Jenkins group membership changed
+      reboot:
+        msg: "Reboot to apply docker group membership for Jenkins user"
+        pre_reboot_delay: 5
+        post_reboot_delay: 30
+        reboot_timeout: 600
+      when: jenkins_docker_group.changed
+
+    # Restart Jenkins service if it exists (optional)
+    - name: Restart Jenkins agent service
+      service:
+        name: jenkins
+        state: restarted
+      when: ansible_facts.services['jenkins.service'] is defined
+
+    # Install Docker Buildx plugin for advanced Docker builds
     - name: Install Docker Buildx plugin system-wide
       shell: |
+        set -e
         mkdir -p /usr/libexec/docker/cli-plugins
-        BUILDX_URL="https://github.com/docker/buildx/releases/latest/download/buildx-v1.7.0.linux-amd64"
+        BUILDX_URL="https://github.com/docker/buildx/releases/download/v0.13.1/buildx-v0.13.1.linux-amd64"
         curl -sSL $BUILDX_URL -o /usr/libexec/docker/cli-plugins/docker-buildx
         chmod +x /usr/libexec/docker/cli-plugins/docker-buildx
       args:
         executable: /bin/bash
-      become: yes
+      register: buildx_install
+      changed_when: buildx_install.rc == 0
 
-    # Enable Docker BuildKit by default
+    # Verify Docker Buildx installation
+    - name: Verify Docker Buildx installation
+      command: docker buildx version
+      register: buildx_version
+      changed_when: false
+      failed_when: buildx_version.rc != 0
+
+    # Enable Docker BuildKit for better performance and caching
     - name: Enable Docker BuildKit
       lineinfile:
         path: /etc/environment
         line: DOCKER_BUILDKIT=1
         create: yes
-
-    # (Optional, not recommended for production) Set permissions on Docker socket for Jenkins agent access
-    # - name: give 777 permissions on /run/docker.sock
-    #   file: 
-    #     path: /run/docker.sock
-    #     state: file 
-    #     mode: 0777
+      notify: Restart Docker
 
     # Enable Docker to start on boot
-    - name: start docker on boot time 
-      service: 
-        name: docker 
+    - name: Enable Docker on boot
+      service:
+        name: docker
         enabled: yes
+
+    # ✅ NEW: Add ubuntu user to docker group (unconditionally)
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+      register: ubuntu_docker_group
+
+    # ✅ NEW: Reboot if ubuntu user group membership changed
+    - name: Reboot if ubuntu group membership changed
+      reboot:
+        msg: "Reboot to apply docker group membership for ubuntu user"
+        pre_reboot_delay: 5
+        post_reboot_delay: 30
+        reboot_timeout: 600
+      when: ubuntu_docker_group.changed
+
+  handlers:
+    # Restart Docker if BuildKit or config changes
+    - name: Restart Docker
+      service:
+        name: docker
+        state: restarted
