@@ -55,6 +55,8 @@ ansible-playbook -i hosts jenkins-master-setup.yaml
 ansible-playbook -i hosts jenkins-slave-setup.yaml
 ```
 - This will install and configure Jenkins, Java 21, Maven, and Docker on the respective servers.
+- The Jenkins slave playbook now installs Docker Buildx system-wide (in /usr/libexec/docker/cli-plugins) and enables Docker BuildKit by default, ensuring compatibility with the latest Docker build features and removing deprecation warnings. This avoids permission issues and works for all users, including Jenkins.
+- The Jenkins user is added to the docker group for secure Docker access (recommended), and the old chmod 777 task is commented out for reference.
 
 ### 4. Access Jenkins
 - Open a browser and go to `http://<jenkins-master-public-ip>:8080`
