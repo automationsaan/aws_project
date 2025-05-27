@@ -192,6 +192,65 @@
       changed_when: false
       failed_when: awscli_version.rc != 0
 
+    # Install Helm (Kubernetes package manager)
+    - name: Download Helm install script
+      get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get_helm.sh
+        mode: '0755'
+
+    - name: Run Helm install script
+      shell: /tmp/get_helm.sh
+      args:
+        creates: /usr/local/bin/helm
+      become: yes
+
+    - name: Verify Helm installation
+      command: helm version --short
+      register: helm_version
+      changed_when: false
+      failed_when: helm_version.rc != 0
+
+    # Add stable Helm repository and update repo cache
+    - name: Add stable Helm repository
+      command: helm repo add stable https://charts.helm.sh/stable
+      register: helm_repo_add
+      changed_when: helm_repo_add.rc == 0
+      failed_when: helm_repo_add.rc != 0
+
+    - name: Update Helm repositories
+      command: helm repo update
+      register: helm_repo_update
+      changed_when: helm_repo_update.rc == 0
+      failed_when: helm_repo_update.rc != 0
+
+    # Add Bitnami Helm repository for MySQL
+    - name: Add Bitnami Helm repository
+      command: helm repo add bitnami https://charts.bitnami.com/bitnami
+      register: helm_repo_add_bitnami
+      changed_when: helm_repo_add_bitnami.rc == 0
+      failed_when: helm_repo_add_bitnami.rc != 0
+
+    - name: Update Helm repositories (after adding Bitnami)
+      command: helm repo update
+      register: helm_repo_update_bitnami
+      changed_when: helm_repo_update_bitnami.rc == 0
+      failed_when: helm_repo_update_bitnami.rc != 0
+
+    # Install MySQL using Bitnami Helm chart
+    - name: Install MySQL using Bitnami Helm chart
+      command: helm install demo-mysql bitnami/mysql --namespace automationsaan --set auth.rootPassword=changeme --set primary.persistence.enabled=false
+      register: helm_mysql_install
+      changed_when: helm_mysql_install.rc == 0
+      failed_when: helm_mysql_install.rc != 0
+
+    # Pull the MySQL Helm chart package to local
+    - name: Pull bitnami/mysql Helm chart package to local
+      command: helm pull bitnami/mysql
+      register: helm_mysql_pull
+      changed_when: helm_mysql_pull.rc == 0
+      failed_when: helm_mysql_pull.rc != 0
+
   handlers:
     # Restart Docker if BuildKit or config changes
     - name: Restart Docker

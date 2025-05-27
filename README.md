@@ -4,13 +4,13 @@ This project provisions a complete DevOps and Kubernetes environment on AWS usin
 - A custom VPC with public subnets
 - EC2 instances for Jenkins master, Jenkins build slave, and an Ansible server
 - Security groups for secure access
-- Automated setup of Jenkins, Java, Maven, Docker, kubectl, and AWS CLI using Ansible
+- Automated setup of Jenkins, Java, Maven, Docker, kubectl, AWS CLI, **Helm**, and **MySQL (via Helm/Bitnami)** using Ansible
 - An Amazon EKS (Elastic Kubernetes Service) cluster with autoscaling node groups
 - Kubernetes cluster management and integration with Jenkins CI/CD pipelines
 
 ## Tools and Technologies Used
 - **Terraform**: Infrastructure as Code for AWS resources (VPC, subnets, EC2, security groups, EKS clusters, node groups, etc.)
-- **Ansible**: Configuration management and automation for provisioning Jenkins, Java, Maven, Docker, kubectl, and AWS CLI
+- **Ansible**: Configuration management and automation for provisioning Jenkins, Java, Maven, Docker, kubectl, AWS CLI, **Helm**, and MySQL
 - **Jenkins**: Continuous Integration/Continuous Deployment (CI/CD) server
 - **Maven**: Build automation tool for Java projects
 - **Docker**: Containerization platform
@@ -18,20 +18,52 @@ This project provisions a complete DevOps and Kubernetes environment on AWS usin
 - **Amazon EKS**: Managed Kubernetes service on AWS, including cluster and autoscaling node group provisioning
 - **AWS CLI**: Command-line interface for managing AWS resources and EKS clusters
 - **kubectl**: Kubernetes CLI for managing clusters and workloads
+- **Helm**: Kubernetes package manager for deploying applications (e.g., MySQL)
+- **Bitnami**: Helm chart repository for production-grade application charts (e.g., MySQL)
+- **MySQL (via Helm/Bitnami)**: Managed MySQL deployment on Kubernetes
 - **AWS EC2**: Virtual machines for running Jenkins, Ansible, and other workloads
 - **Ubuntu 22.04+**: Operating system for all instances
 
-## Project Structure
+## Pre-Playbook Cleanup: Helm and Kubernetes Resources
+
+**Before re-running the Ansible playbook that installs MySQL via Helm, ensure any previous Helm releases and related Kubernetes resources are cleaned up to avoid conflicts.**
+
+Run these commands on the Jenkins slave (or wherever you have kubectl/Helm configured):
+
+```sh
+# List all Helm releases in all namespaces
+helm list -A
+
+# Uninstall the MySQL release (replace <namespace> and <release-name> as needed)
+helm uninstall <release-name> -n <namespace>
+
+# Example (if using 'mysql' as release name and 'default' namespace):
+helm uninstall mysql -n default
+
+# Delete any remaining MySQL pods, PVCs, or services (adjust namespace as needed)
+kubectl get all -n <namespace> | grep mysql
+kubectl delete pod <pod-name> -n <namespace>
+kubectl delete pvc <pvc-name> -n <namespace>
+kubectl delete svc <svc-name> -n <namespace>
+
+# Optionally, delete the namespace if dedicated for MySQL (be careful!)
+kubectl delete namespace <namespace>
 ```
-aws_project/
-├── ansible/
-│   ├── hosts
-│   ├── jenkins-master-setup.yaml
-│   └── jenkins-slave-setup.yaml
-├── terraform/
-│   └── main.tf
-└── .gitignore
-```
+
+**Note:** The playbook is idempotent, but Helm will not overwrite an existing release with the same name. Always clean up before re-running the playbook if you want a fresh install.
+
+## Helm and MySQL Deployment
+
+- The Jenkins slave Ansible playbook installs and configures **Helm** and adds both the stable and Bitnami Helm repositories.
+- The playbook pulls and installs the **MySQL Helm chart from Bitnami**, ensuring a production-ready MySQL deployment on your EKS cluster.
+- The MySQL deployment is idempotent: if the release does not exist, it is installed; if it exists, the playbook skips installation (see cleanup above for fresh installs).
+- You can verify the deployment with:
+  ```sh
+  helm list -A
+  kubectl get pods -A | grep mysql
+  kubectl get svc -A | grep mysql
+  ```
+- The playbook also updates the Helm repo cache to ensure the latest charts are used.
 
 ## How to Run the Project
 
@@ -132,9 +164,11 @@ aws eks update-kubeconfig --region us-west-2 --name automationsaan-eks-01
 ## Troubleshooting
 
 - If you encounter Docker permission errors in Jenkins builds, ensure the agent user is in the `docker` group and that the instance has been rebooted after the group change.
+- For Helm/MySQL issues, ensure you have cleaned up any previous Helm releases and Kubernetes resources as described in the **Pre-Playbook Cleanup** section above.
 - You can manually verify with:
   - `id ubuntu` or `id jenkins` (should list `docker` in groups)
   - `sudo -u ubuntu docker info` or `sudo -u jenkins docker info` (should not show permission denied)
+  - `helm list -A` and `kubectl get pods -A | grep mysql` (should show MySQL running)
 - If the agent user is not in the `docker` group after running the playbook, re-run the playbook and ensure the reboot completes.
 
 ## Playbook Idempotency
