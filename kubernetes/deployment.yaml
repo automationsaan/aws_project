@@ -1,0 +1,32 @@
+# Kubernetes Deployment for automationsaan-rtp application
+# This manifest defines a Deployment resource to manage the lifecycle of the automationsaan-rtp app in the automationsaan namespace.
+# It ensures high availability, declarative updates, and secure image pulling from a private registry.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: automationsaan-rtp  # Name of the Deployment resource
+  namespace: automationsaan  # Namespace where the deployment will be created
+spec:
+  replicas: 2  # Number of pod replicas to run (can be increased for scaling)
+  selector:
+    matchLabels:
+      app:  automationsaan-rtp  # Selector to match pods managed by this deployment
+  template:
+    metadata:
+      labels:
+        app:  automationsaan-rtp  # Pod label for selector and service matching
+    spec:
+      imagePullSecrets:
+      - name: jfrog-artifact-cred  # Reference to Kubernetes secret for authenticating to JFrog private registry
+      containers:
+      - name:  automationsaan-rtp  # Name of the container in the pod
+        image: automationsaan.jfrog.io/hello-world-spring-docker-local/hello-world:0.0.1-SNAPSHOT  # Image to deploy (from private JFrog registry)
+        imagePullPolicy: Always  # Always pull the latest image version
+        ports:
+        - containerPort: 8000  # Expose port 8000 from the container
+        env:
+        # No external API environment variables needed for this project.
+        # Removed CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, and ACCESS_TOKEN_SECRET as they are not used.
+        # Add any required environment variables for your app below.
+        # ...existing code...

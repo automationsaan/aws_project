@@ -1,0 +1,10 @@
+# namespace.yaml - Defines a Kubernetes namespace for logical isolation of resources
+#
+# This manifest creates the 'automationsaan' namespace, which is used to group and isolate all related resources
+# (deployments, services, secrets, etc.) for the automationsaan project. Namespaces help manage environments and
+# prevent naming conflicts in multi-tenant clusters.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+ name: automationsaan

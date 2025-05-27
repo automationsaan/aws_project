@@ -1,0 +1,22 @@
+# service.yaml - Exposes the automationsaan-rtp application to external traffic via a NodePort Service
+#
+# This manifest creates a Kubernetes Service of type 'NodePort' in the 'automationsaan' namespace.
+# - The service selects pods with the label 'app: automationsaan-rtp'.
+# - It forwards external traffic from node port 30082 to port 8000 on the service, which is then routed to port 8080 in the pod (where the app listens).
+# - This allows users to access the application externally using <node-public-ip>:30082.
+#
+# Note: For production, consider using a LoadBalancer service for easier and more robust external access.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name:  automationsaan-rtp-service
+  namespace: automationsaan
+spec:
+  type: NodePort
+  selector:
+    app: automationsaan-rtp
+  ports:
+  - nodePort: 30082
+    port: 8000
+    targetPort: 8080

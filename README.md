@@ -167,10 +167,37 @@ aws eks update-kubeconfig --region us-west-2 --name automationsaan-eks-01
 
 - This ensures that the security group is always created in the correct VPC for your EKS or EC2 resources.
 
-## Notes
-- All infrastructure is created in the AWS region specified in `main.tf` (default: `us-west-2`).
-- Terraform state files are excluded from version control via `.gitignore`.
-- Security groups allow SSH (22) and Jenkins (8080) access from anywhere. Adjust as needed for production.
+## Kubernetes Manifests Overview
+
+### namespace.yaml
+Defines the `automationsaan` namespace to logically isolate all project resources. Namespaces help manage environments and prevent naming conflicts in multi-tenant clusters.
+
+### secret.yaml
+Creates a Kubernetes Secret of type `kubernetes.io/dockerconfigjson` in the `automationsaan` namespace. This secret stores the base64-encoded Docker config, allowing Kubernetes to authenticate and pull images from a private registry (e.g., JFrog Artifactory). Referenced by `imagePullSecrets` in deployments.
+
+### deployment.yaml
+Defines the Deployment for the `automationsaan-rtp` application. Manages pod replicas, sets up container image pulls from JFrog, and configures ports and labels. Environment variables for external APIs have been removed for security and clarity, as only JFrog, Jenkins, AWS, SonarQube, and GitHub are used.
+
+### service.yaml
+Exposes the application to external traffic using a NodePort service. Traffic to `<node-public-ip>:30082` is forwarded to port 8000 on the service, which is routed to port 8080 in the pod (where the app listens). For production, consider using a LoadBalancer service for easier access.
+
+### deploy.sh
+A shell script to automate the deployment of all Kubernetes resources in the correct order:
+1. Creates the namespace
+2. Creates the Docker registry secret
+3. Deploys the application
+4. Exposes the application via a Service
+
+Each manifest is commented to explain its purpose and configuration.
+
+## Security Notes
+- Sensitive values (like Docker registry credentials) are stored as Kubernetes secrets, not in plain manifests.
+- For production, use Kubernetes secrets for all sensitive environment variables.
+
+## Troubleshooting
+- Ensure your application listens on the same port as specified in the service's `targetPort` (currently 8080).
+- NodePort services require you to use the public IP of the node running the pod and ensure the port is open in your cloud provider's firewall/security group.
+- For easier access, consider switching to a LoadBalancer service.
 
 ## Authors
 - Saan Saechao AKA AutomationSaan
