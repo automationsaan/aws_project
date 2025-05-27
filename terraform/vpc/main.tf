@@ -93,13 +93,14 @@ resource "aws_internet_gateway" "automationsaan-igw" {
 # Route table for public subnets
 resource "aws_route_table" "automationsaan-public-rt" {
   vpc_id = aws_vpc.automationsaan-vpc.id
+  # Route all outbound traffic to the internet via the internet gateway
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.automationsaan-igw.id
   }
 }
 
-# Associate public subnets with the route table
+# Associate each public subnet with the public route table so they have internet access
 resource "aws_route_table_association" "automationsaan-rta-public-subnet-01" {
   subnet_id      = aws_subnet.automationsaan-public-subnet-01.id
   route_table_id = aws_route_table.automationsaan-public-rt.id
@@ -108,4 +109,18 @@ resource "aws_route_table_association" "automationsaan-rta-public-subnet-01" {
 resource "aws_route_table_association" "automationsaan-rta-public-subnet-02" {
   subnet_id      = aws_subnet.automationsaan-public-subnet-02.id
   route_table_id = aws_route_table.automationsaan-public-rt.id
+}
+
+# Create security groups for EKS and other resources using a module
+module "sgs" {
+  source = "../sg_eks"
+  vpc_id = aws_vpc.automationsaan-vpc.id
+}
+
+# Create an EKS cluster using a module, passing VPC, subnet, and security group info
+module "eks" {
+  source    = "../eks"
+  vpc_id    = aws_vpc.automationsaan-vpc.id
+  subnet_ids = [aws_subnet.automationsaan-public-subnet-01.id, aws_subnet.automationsaan-public-subnet-02.id]
+  sg_ids    = module.sgs.security_group_public
 }

@@ -92,6 +92,27 @@ sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 
 - The playbook does not use insecure permissions on the Docker socket. Docker access is managed via group membership for best security practices.
 
+## Terraform Module Variables (sg_eks)
+
+- The `vpc_id` variable in `terraform/sg_eks/variables.tf` specifies the VPC where the security group will be created. This allows the security group module to be reused in different VPCs by passing the appropriate VPC ID from the parent module or root configuration.
+- Example usage:
+  ```hcl
+  module "sg_eks" {
+    source = "./sg_eks"
+    vpc_id = aws_vpc.automationsaan-vpc.id
+  }
+  ```
+
+- The variable is defined as:
+  ```hcl
+  variable "vpc_id" {
+    type = string
+    # default = "vpc-5f680722"  # Example default, usually passed in from parent module
+  }
+  ```
+
+- This ensures that the security group is always created in the correct VPC for your EKS or EC2 resources.
+
 ## Notes
 - All infrastructure is created in the AWS region specified in `main.tf` (default: `us-west-2`).
 - Terraform state files are excluded from version control via `.gitignore`.
