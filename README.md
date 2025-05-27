@@ -1,18 +1,24 @@
 # AWS DevOps Project
 
-This project provisions a complete DevOps environment on AWS using Infrastructure as Code and automation tools. It includes:
+This project provisions a complete DevOps and Kubernetes environment on AWS using Infrastructure as Code and automation tools. It includes:
 - A custom VPC with public subnets
 - EC2 instances for Jenkins master, Jenkins build slave, and an Ansible server
 - Security groups for secure access
-- Automated setup of Jenkins, Java, Maven, and Docker using Ansible
+- Automated setup of Jenkins, Java, Maven, Docker, kubectl, and AWS CLI using Ansible
+- An Amazon EKS (Elastic Kubernetes Service) cluster with autoscaling node groups
+- Kubernetes cluster management and integration with Jenkins CI/CD pipelines
 
 ## Tools and Technologies Used
-- **Terraform**: Infrastructure as Code for AWS resources (VPC, subnets, EC2, security groups, etc.)
-- **Ansible**: Configuration management and automation for provisioning Jenkins, Java, Maven, and Docker
+- **Terraform**: Infrastructure as Code for AWS resources (VPC, subnets, EC2, security groups, EKS clusters, node groups, etc.)
+- **Ansible**: Configuration management and automation for provisioning Jenkins, Java, Maven, Docker, kubectl, and AWS CLI
 - **Jenkins**: Continuous Integration/Continuous Deployment (CI/CD) server
 - **Maven**: Build automation tool for Java projects
 - **Docker**: Containerization platform
-- **AWS EC2**: Virtual machines for running Jenkins and Ansible
+- **Kubernetes**: Container orchestration platform for deploying and managing applications
+- **Amazon EKS**: Managed Kubernetes service on AWS, including cluster and autoscaling node group provisioning
+- **AWS CLI**: Command-line interface for managing AWS resources and EKS clusters
+- **kubectl**: Kubernetes CLI for managing clusters and workloads
+- **AWS EC2**: Virtual machines for running Jenkins, Ansible, and other workloads
 - **Ubuntu 22.04+**: Operating system for all instances
 
 ## Project Structure
@@ -64,6 +70,54 @@ ansible-playbook -i hosts jenkins-slave-setup.yaml
 ```
 sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 ```
+
+## kubectl and AWS CLI Installation (Jenkins Slave)
+
+- The Ansible playbook now installs the latest stable version of `kubectl` (Kubernetes CLI) and ensures it is executable and available in the system PATH for the Jenkins slave.
+- The playbook also installs or updates the AWS CLI v2 to the latest version, ensuring the Jenkins slave can interact with AWS services and EKS clusters.
+
+## Manual AWS CLI Configuration (Jenkins Slave)
+
+After running the playbook, log in to the Jenkins slave (or Maven build agent) to configure AWS CLI credentials for programmatic access:
+
+1. **SSH into the Jenkins Slave:**
+   ```sh
+   ssh -i <your-key.pem> ubuntu@<jenkins-slave-public-ip>
+   ```
+
+2. **Configure AWS CLI with your AWS account credentials:**
+   ```sh
+   aws configure
+   ```
+   - Enter the `AWS Access Key ID` and `AWS Secret Access Key` you created earlier in the project.
+   - Set the default region (e.g., `us-west-2`).
+   - Set the default output format (e.g., `json`).
+
+3. **Verify AWS CLI is working:**
+   ```sh
+   aws sts get-caller-identity
+   ```
+   - This should return your AWS account and user information.
+
+## Download Kubernetes Credentials and Cluster Configuration
+
+To manage your EKS cluster from the Jenkins slave, download the Kubernetes credentials and configuration file using the AWS CLI:
+
+```sh
+aws eks update-kubeconfig --region us-west-2 --name automationsaan-eks-01
+```
+- This command will create or update the `.kube/config` file in your home directory, allowing `kubectl` to interact with your EKS cluster.
+- You can now use `kubectl` commands to manage your Kubernetes resources:
+  ```sh
+  kubectl get nodes
+  kubectl get pods -A
+  ```
+
+## Summary of Recent Playbook Changes
+- Installs and configures Java, Maven, Docker, Docker Buildx, kubectl, and AWS CLI on the Jenkins slave.
+- Ensures both `jenkins` and `ubuntu` users have Docker access.
+- Handles reboots if group membership changes.
+- Verifies all major tools are installed and available in the system PATH.
 
 ## Jenkins Slave Docker Permissions and Robustness
 

@@ -132,6 +132,66 @@
         reboot_timeout: 600
       when: ubuntu_docker_group.changed
 
+    # Install kubectl (Kubernetes CLI) for managing EKS clusters
+    - name: Download kubectl binary
+      get_url:
+        url: https://dl.k8s.io/release/v1.30.1/bin/linux/amd64/kubectl  # Download the latest stable kubectl
+        dest: /tmp/kubectl
+        mode: '0755'
+
+    - name: Make kubectl executable
+      file:
+        path: /tmp/kubectl
+        mode: '0755'  # Ensure the binary is executable
+        state: file
+
+    - name: Move kubectl to /usr/local/bin
+      command: mv /tmp/kubectl /usr/local/bin/kubectl  # Place kubectl in system PATH
+      args:
+        creates: /usr/local/bin/kubectl
+      become: yes
+
+    - name: Ensure kubectl is in PATH and executable
+      command: kubectl version --client  # Verify kubectl installation
+      register: kubectl_version
+      changed_when: false
+      failed_when: kubectl_version.rc != 0
+
+    # Download AWS CLI v2 installer (zip archive)
+    - name: Download AWS CLI v2 installer
+      get_url:
+        url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip  # Download the latest AWS CLI v2
+        dest: /tmp/awscliv2.zip
+        mode: '0644'
+
+    # Ensure unzip is installed (required to extract AWS CLI installer)
+    - name: Install unzip (required for AWS CLI installer)
+      apt:
+        name: unzip
+        state: present
+
+    # Extract AWS CLI installer from the downloaded zip file
+    - name: Unzip AWS CLI installer
+      unarchive:
+        src: /tmp/awscliv2.zip
+        dest: /tmp/
+        remote_src: yes
+
+    # Run the AWS CLI installer script to install or update AWS CLI v2
+    - name: Install or update AWS CLI v2
+      shell: |
+        /tmp/aws/install --update  # Install or update AWS CLI to the latest version
+      args:
+        creates: /usr/local/bin/aws
+      become: yes
+
+    # Verify AWS CLI installation and version
+    - name: Verify AWS CLI installation
+      command: aws --version  # Confirm AWS CLI is installed and in PATH
+      register: awscli_version
+      changed_when: false
+      failed_when: awscli_version.rc != 0
+
   handlers:
     # Restart Docker if BuildKit or config changes
     - name: Restart Docker
