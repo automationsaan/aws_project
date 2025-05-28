@@ -4,23 +4,51 @@ This project provisions a complete DevOps and Kubernetes environment on AWS usin
 - A custom VPC with public subnets (Terraform)
 - EC2 instances for Jenkins master, Jenkins build slave, and an Ansible server (Terraform)
 - Security groups for secure access (Terraform)
-- Automated setup of Jenkins, Java, Maven, Docker, Docker Buildx, kubectl, AWS CLI, Helm, MySQL, Prometheus, and Grafana using Ansible
+- Automated setup of Jenkins, Java, Maven, Docker, Docker Buildx, kubectl, AWS CLI, Helm, MySQL, Prometheus, Grafana, SonarQube/SonarCloud, JFrog Artifactory, and Shell scripting using Ansible
 - An Amazon EKS (Elastic Kubernetes Service) cluster with autoscaling node groups (Terraform)
 - Kubernetes cluster management and integration with Jenkins CI/CD pipelines (kubectl, AWS CLI, Jenkins)
-- Helm for Kubernetes package management (MySQL, Prometheus, Grafana)
+- Helm for Kubernetes package management (MySQL, Prometheus, Grafana, application Helm Chart)
 - Monitoring stack with Prometheus and Grafana (Helm)
+- Static code analysis and quality gates with SonarQube/SonarCloud
+- Docker image build and push to JFrog Artifactory
+- Kubernetes deployment and autoscaling (HPA) on AWS EKS
+- Helm-based templated deployments for repeatability and best practices
 - Automated and idempotent configuration for all tools and services
 - Prometheus and Grafana are automatically exposed via AWS LoadBalancer services for external access
+- Secure configuration and cloud-native deployment patterns
+- Shell scripts for automated deployment to Kubernetes clusters
+- JUnit 5 for unit testing
+- Spring Boot 3.2.6 for REST API development
+
+## Application Repository and CI/CD Pipeline
+
+This infrastructure is designed to deploy and manage the [Automationsaan Hello World Spring Boot Project](https://github.com/automationsaan/hello-world-springboot), a simple Spring Boot REST API with a complete CI/CD pipeline. The application and pipeline demonstrate:
+- Automated build, test, and deployment using Jenkins
+- Static code analysis and quality gates with SonarQube/SonarCloud
+- Docker image build and push to JFrog Artifactory
+- Kubernetes deployment and autoscaling on AWS EKS
+- Helm-based templated deployments for repeatability and best practices
+- Secure configuration and cloud-native deployment patterns
 
 ## Tools and Technologies Used
 
+- **Java 21**: Programming language for the application
+- **Spring Boot 3.2.6**: REST API framework
+- **Maven**: Build automation and dependency management
+- **JUnit 5**: Unit testing framework
+- **Jenkins**: CI/CD automation server (pipeline defined in Jenkinsfile)
+- **SonarQube/SonarCloud**: Static code analysis and quality gate enforcement
+- **Docker**: Containerization of the Spring Boot application
+- **JFrog Artifactory**: Artifact and Docker image repository
+- **Kubernetes (EKS)**: Container orchestration for automated deployment, scaling, and management
+- **Amazon EKS (Elastic Kubernetes Service)**: Managed Kubernetes cluster for running production workloads in AWS
+- **Kubernetes Autoscaling (HPA)**: Horizontal Pod Autoscaler for automatic scaling based on resource usage
+- **Kubernetes YAML Manifests**: Declarative configuration for deployment, service, namespace, and secrets
+- **Helm**: Kubernetes package manager for templated, repeatable deployments (see Helm Deploy stage in Jenkinsfile)
+- **Helm Chart**: Used for parameterized, production-grade Kubernetes deployments
+- **Shell Scripts**: For automated deployment to Kubernetes clusters (see `kubernetes/deploy.sh`)
 - **Terraform**: Infrastructure as Code for AWS resources (VPC, subnets, security groups, EC2, EKS, IAM, etc.)
 - **Ansible**: Configuration management and automation for provisioning Jenkins, Java, Maven, Docker, Docker Buildx, kubectl, AWS CLI, Helm, MySQL, Prometheus, Grafana
-- **Jenkins**: Continuous Integration/Continuous Deployment (CI/CD) server (master/slave architecture)
-- **Maven**: Build automation tool for Java projects
-- **Docker**: Containerization platform, including Buildx and BuildKit for advanced builds
-- **Kubernetes (EKS)**: Container orchestration platform, managed by AWS
-- **Helm**: Kubernetes package manager for deploying applications (MySQL, Prometheus, Grafana)
 - **Prometheus & Grafana**: Monitoring stack (deployed via kube-prometheus-stack Helm chart, exposed via AWS LoadBalancer)
 - **MySQL**: Deployed on Kubernetes using Bitnami Helm chart
 - **AWS CLI**: Command-line interface for managing AWS resources and EKS clusters
