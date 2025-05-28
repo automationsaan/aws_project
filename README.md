@@ -10,7 +10,7 @@ This project provisions a complete DevOps and Kubernetes environment on AWS usin
 - Helm for Kubernetes package management (MySQL, Prometheus, Grafana)
 - Monitoring stack with Prometheus and Grafana (Helm)
 - Automated and idempotent configuration for all tools and services
-- **Prometheus and Grafana are automatically exposed via AWS LoadBalancer services for external access**
+- Prometheus and Grafana are automatically exposed via AWS LoadBalancer services for external access
 
 ## Tools and Technologies Used
 
