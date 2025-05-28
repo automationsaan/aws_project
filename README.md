@@ -1,4 +1,4 @@
-# AWS DevOps Project
+# AWS DevOps Project Overview
 
 This project provisions a complete DevOps and Kubernetes environment on AWS using Infrastructure as Code and automation tools. It includes:
 - A custom VPC with public subnets (Terraform)
@@ -19,6 +19,55 @@ This project provisions a complete DevOps and Kubernetes environment on AWS usin
 - Shell scripts for automated deployment to Kubernetes clusters
 - JUnit 5 for unit testing
 - Spring Boot 3.2.6 for REST API development
+
+## Infrastructure Diagram
+
+Below is a high-level architecture diagram of the AWS DevOps environment provisioned by this project:
+
+```
++-------------------+         +-------------------+         +-------------------+
+|                   |         |                   |         |                   |
+|   Developer/CI    +-------->+   Jenkins Master  +<------->+   Jenkins Slave   |
+|                   |  SSH/   |   (EC2, Public)   |   SSH   |   (EC2, Public)   |
++-------------------+  HTTP   +-------------------+         +-------------------+
+         |                          |                               |
+         |                          |                               |
+         |                          v                               v
+         |                +-------------------+         +-------------------+
+         |                |                   |         |                   |
+         |                |   Ansible Server  |         |   Amazon ECR /    |
+         |                |   (EC2, Public)   |         |   JFrog Artifactory|
+         |                +-------------------+         +-------------------+
+         |                          |                               |
+         |                          v                               |
+         |                +-------------------+                    |
+         |                |                   |                    |
+         |                |   Amazon EKS      |<-------------------+
+         |                |   (Kubernetes)    |
+         |                +-------------------+
+         |                          |
+         |                          v
+         |                +-------------------+
+         |                |                   |
+         |                |   AWS RDS / MySQL |
+         |                +-------------------+
+         |                          |
+         |                          v
+         |                +-------------------+
+         |                |                   |
+         |                | Prometheus &      |
+         |                | Grafana (via LB)  |
+         |                +-------------------+
+```
+
+**Legend:**
+- All EC2 instances (Jenkins master, slave, Ansible) are in public subnets with security groups.
+- Jenkins Master triggers builds, runs CI/CD pipeline, and interacts with Jenkins Slave, Ansible, and EKS.
+- Jenkins Slave builds Docker images, pushes to JFrog Artifactory or Amazon ECR.
+- Ansible automates configuration and deployment.
+- EKS runs the application, MySQL (via Helm), and monitoring stack (Prometheus & Grafana).
+- Prometheus and Grafana are exposed via AWS LoadBalancer for external access.
+- SonarQube/SonarCloud is used for code quality checks (hosted or SaaS, not shown as EC2).
 
 ## Application Repository and CI/CD Pipeline
 
