@@ -26,47 +26,56 @@ Below is a high-level architecture diagram of the AWS DevOps environment provisi
 
 ```mermaid
 graph TD
-    Developer(("Developer/CI"))
-    JenkinsMaster["Jenkins Master"]
-    JenkinsSlave["Jenkins Slave"]
-    Ansible["Ansible Server"]
-    SonarQube["SonarQube/SonarCloud"]
-    Artifactory["JFrog Artifactory"]
-    ECR["Amazon ECR"]
-    subgraph EKS_Cluster["Amazon EKS Cluster"]
-        AppPods["App"]
-        MySQL["DB"]
-        PromGraf["Mon"]
-        LB["LB"]
-    end
+    Dev["Dev"]
+    JM["JM"]
+    JS["JS"]
+    ANS["ANS"]
+    SQ["SQ"]
+    ART["ART"]
+    ECR["ECR"]
+    EKS["EKS"]
+    APP["APP"]
+    DB["DB"]
+    MON["MON"]
+    LB["LB"]
 
-    Developer-->|"SSH/HTTP"|JenkinsMaster
-    JenkinsMaster-->|"Build/Deploy"|JenkinsSlave
-    JenkinsMaster-->|"Configure"|Ansible
-    JenkinsMaster-->|"API"|SonarQube
-    JenkinsMaster-->|"API"|Artifactory
-    JenkinsMaster-->|"API"|ECR
-    JenkinsMaster-->|"kubectl/AWS CLI"|EKS_Cluster
-    JenkinsSlave-->|"Push"|Artifactory
-    JenkinsSlave-->|"Push"|ECR
-    JenkinsSlave-->|"kubectl/AWS CLI"|EKS_Cluster
-    Ansible-->|"Configures"|EKS_Cluster
-    Artifactory-->|"Images"|EKS_Cluster
-    ECR-->|"Images"|EKS_Cluster
-    EKS_Cluster-->|"App"|AppPods
-    EKS_Cluster-->|"DB"|MySQL
-    EKS_Cluster-->|"Mon"|PromGraf
-    PromGraf-->|"Exposed via"|LB
-    LB-->|"External Access"|Developer
-    MySQL-->|"App DB"|AppPods
+    Dev-->|SSH/HTTP|JM
+    JM-->|SSH|JS
+    JM-->|SSH|ANS
+    JM-->|API|SQ
+    JM-->|API|ART
+    JM-->|API|ECR
+    JM-->|kubectl/AWS|EKS
+    JS-->|Build/Push|ART
+    JS-->|Build/Push|ECR
+    JS-->|kubectl/AWS|EKS
+    ANS-->|Config|JM
+    ANS-->|Config|JS
+    ANS-->|Config|EKS
+    SQ-->|QGate|JM
+    ART-->|Images|EKS
+    ECR-->|Images|EKS
+    EKS-->|App|APP
+    EKS-->|DB|DB
+    EKS-->|Mon|MON
+    MON-->|Exposed|LB
+    LB-->|Access|Dev
+    DB-->|AppDB|APP
 ```
 
 **Legend:**
-- Jenkins Master triggers builds, runs CI/CD pipeline, and interacts with Jenkins Slave, Ansible, SonarQube/SonarCloud, JFrog Artifactory, and EKS.
-- Jenkins Slave builds, tests, and pushes Docker images to JFrog Artifactory or Amazon ECR.
-- Ansible automates configuration and deployment of all tools and services.
-- EKS runs the application, MySQL, and monitoring stack (Prometheus & Grafana).
-- AWS LoadBalancer exposes Prometheus and Grafana externally.
+- **Dev**: Developer/CI
+- **JM**: Jenkins Master (EC2)
+- **JS**: Jenkins Slave (EC2)
+- **ANS**: Ansible Server (EC2)
+- **SQ**: SonarQube/SonarCloud
+- **ART**: JFrog Artifactory
+- **ECR**: Amazon ECR
+- **EKS**: Amazon EKS Cluster
+- **APP**: App Pods (Spring Boot)
+- **DB**: MySQL (Bitnami Helm)
+- **MON**: Prometheus & Grafana (Helm)
+- **LB**: AWS LoadBalancer
 
 ## Application Repository and CI/CD Pipeline
 
