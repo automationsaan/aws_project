@@ -1,28 +1,116 @@
 # AWS DevOps Project
 
 This project provisions a complete DevOps and Kubernetes environment on AWS using Infrastructure as Code and automation tools. It includes:
-- A custom VPC with public subnets
-- EC2 instances for Jenkins master, Jenkins build slave, and an Ansible server
-- Security groups for secure access
-- Automated setup of Jenkins, Java, Maven, Docker, kubectl, AWS CLI, **Helm**, and **MySQL (via Helm/Bitnami)** using Ansible
-- An Amazon EKS (Elastic Kubernetes Service) cluster with autoscaling node groups
-- Kubernetes cluster management and integration with Jenkins CI/CD pipelines
+- A custom VPC with public subnets (Terraform)
+- EC2 instances for Jenkins master, Jenkins build slave, and an Ansible server (Terraform)
+- Security groups for secure access (Terraform)
+- Automated setup of Jenkins, Java, Maven, Docker, Docker Buildx, kubectl, AWS CLI, Helm, MySQL, Prometheus, and Grafana using Ansible
+- An Amazon EKS (Elastic Kubernetes Service) cluster with autoscaling node groups (Terraform)
+- Kubernetes cluster management and integration with Jenkins CI/CD pipelines (kubectl, AWS CLI, Jenkins)
+- Helm for Kubernetes package management (MySQL, Prometheus, Grafana)
+- Monitoring stack with Prometheus and Grafana (Helm)
+- Automated and idempotent configuration for all tools and services
+- **Prometheus and Grafana are automatically exposed via AWS LoadBalancer services for external access**
 
 ## Tools and Technologies Used
-- **Terraform**: Infrastructure as Code for AWS resources (VPC, subnets, EC2, security groups, EKS clusters, node groups, etc.)
-- **Ansible**: Configuration management and automation for provisioning Jenkins, Java, Maven, Docker, kubectl, AWS CLI, **Helm**, and MySQL
-- **Jenkins**: Continuous Integration/Continuous Deployment (CI/CD) server
+
+- **Terraform**: Infrastructure as Code for AWS resources (VPC, subnets, security groups, EC2, EKS, IAM, etc.)
+- **Ansible**: Configuration management and automation for provisioning Jenkins, Java, Maven, Docker, Docker Buildx, kubectl, AWS CLI, Helm, MySQL, Prometheus, Grafana
+- **Jenkins**: Continuous Integration/Continuous Deployment (CI/CD) server (master/slave architecture)
 - **Maven**: Build automation tool for Java projects
-- **Docker**: Containerization platform
-- **Kubernetes**: Container orchestration platform for deploying and managing applications
-- **Amazon EKS**: Managed Kubernetes service on AWS, including cluster and autoscaling node group provisioning
+- **Docker**: Containerization platform, including Buildx and BuildKit for advanced builds
+- **Kubernetes (EKS)**: Container orchestration platform, managed by AWS
+- **Helm**: Kubernetes package manager for deploying applications (MySQL, Prometheus, Grafana)
+- **Prometheus & Grafana**: Monitoring stack (deployed via kube-prometheus-stack Helm chart, exposed via AWS LoadBalancer)
+- **MySQL**: Deployed on Kubernetes using Bitnami Helm chart
 - **AWS CLI**: Command-line interface for managing AWS resources and EKS clusters
 - **kubectl**: Kubernetes CLI for managing clusters and workloads
-- **Helm**: Kubernetes package manager for deploying applications (e.g., MySQL)
-- **Bitnami**: Helm chart repository for production-grade application charts (e.g., MySQL)
-- **MySQL (via Helm/Bitnami)**: Managed MySQL deployment on Kubernetes
-- **AWS EC2**: Virtual machines for running Jenkins, Ansible, and other workloads
+- **Docker Buildx & BuildKit**: Advanced Docker build capabilities
+- **Bitnami & Prometheus Community Helm Repos**: For production-grade application charts
+- **Amazon ECR (optional)**: For container image storage (if used in your pipeline)
 - **Ubuntu 22.04+**: Operating system for all instances
+
+---
+
+### Accessing Grafana and Prometheus after Service Type Change
+
+After running the playbook, both Grafana and Prometheus are exposed via AWS LoadBalancer services.
+
+1. Get the external DNS/hostname for each service:
+   ```sh
+   kubectl get svc -n automationsaan-prom-monitoring
+   ```
+   Example output:
+   ```
+   NAME                TYPE           CLUSTER-IP      EXTERNAL-IP                                                               PORT(S)   AGE
+   prometheus-grafana  LoadBalancer   172.20.45.167   a766a756a42b943ac99dfb375972f2a1-1304622396.us-west-2.elb.amazonaws.com   80:...   ...
+   prometheus-...      LoadBalancer   ...             ...                                                                       9090:...  ...
+   ```
+2. Access Grafana:
+   - http://<EXTERNAL-IP-or-DNS>:80
+   - (Default credentials: admin/prom-operator unless overridden)
+3. Access Prometheus:
+   - http://<EXTERNAL-IP-or-DNS>:9090
+4. If you do not see an EXTERNAL-IP immediately, wait a few minutes for AWS to provision the ELB.
+5. For security, restrict access to these LoadBalancers using AWS security groups as needed.
+
+---
+
+## Cleaning Up the Jenkins/Maven Slave for a Fresh Playbook Run
+
+To ensure a clean, error-free playbook run, perform the following steps on your Jenkins/Maven slave (or wherever you have kubectl/helm access):
+
+```sh
+# Uninstall Helm releases (MySQL, Prometheus/Grafana)
+helm uninstall demo-mysql -n automationsaan
+helm uninstall prometheus -n automationsaan-prom-monitoring
+
+# Delete Kubernetes namespaces (if you want a full reset)
+kubectl delete namespace automationsaan
+kubectl delete namespace automationsaan-prom-monitoring
+
+# Remove downloaded Helm chart archives and extracted directories (use sudo for permission issues)
+sudo rm -rf /home/ubuntu/mysql
+sudo rm -rf /home/ubuntu/kube-prometheus-stack
+sudo rm -f /home/ubuntu/mysql-*.tgz
+sudo rm -f /home/ubuntu/kube-prometheus-stack-*.tgz
+
+# (Optional) Clean up Docker
+sudo docker system prune -af
+```
+
+**Notes:**
+- Ignore errors like "release not found" or "namespace not found" if resources are already gone.
+- Wait a minute or two after deleting namespaces to ensure all resources are fully removed before re-running the playbook.
+- Use `sudo` to remove files/directories created by Ansible with elevated privileges.
+
+## Cleaning Up the Jenkins Slave (Maven Agent) Before Re-running the Playbook
+
+Before re-running the Ansible playbook, clean up any previous Helm releases, Kubernetes resources, and chart files to avoid conflicts and ensure idempotency. Run these commands on the Jenkins slave (or wherever you have kubectl/helm access):
+
+```sh
+# Uninstall Helm releases (MySQL, Prometheus)
+helm uninstall demo-mysql -n automationsaan
+helm uninstall prometheus -n automationsaan-prom-monitoring
+
+# Delete Kubernetes namespaces (if you want a full reset)
+kubectl delete namespace automationsaan
+kubectl delete namespace automationsaan-prom-monitoring
+
+# Remove downloaded Helm chart archives and extracted directories
+rm -f /home/ubuntu/mysql-*.tgz
+rm -rf /home/ubuntu/mysql
+rm -f /home/ubuntu/kube-prometheus-stack-*.tgz
+rm -rf /home/ubuntu/kube-prometheus-stack
+
+# (Optional) Clean up Docker
+sudo docker system prune -af
+```
+
+**Note:**
+- The playbook is idempotent, but Helm will not overwrite an existing release with the same name. Always clean up before re-running the playbook for a fresh install.
+- If you change chart versions, update the playbook's unarchive task to match the new filename.
+- For troubleshooting, see the Troubleshooting section below.
 
 ## Pre-Playbook Cleanup: Helm and Kubernetes Resources
 
@@ -160,6 +248,34 @@ aws eks update-kubeconfig --region us-west-2 --name automationsaan-eks-01
   - `sudo -u ubuntu docker info` or `sudo -u jenkins docker info`
   - `sudo -u ubuntu docker buildx version` or `sudo -u jenkins docker buildx version`
   - `sudo -u ubuntu docker run --rm hello-world` or `sudo -u jenkins docker run --rm hello-world`
+
+## Cleaning Up the Jenkins Slave (Maven Agent) Before Re-running the Playbook
+
+Before re-running the Ansible playbook, clean up any previous Helm releases, Kubernetes resources, and chart files to avoid conflicts and ensure idempotency. Run these commands on the Jenkins slave (or wherever you have kubectl/helm access):
+
+```sh
+# Uninstall Helm releases (MySQL, Prometheus)
+helm uninstall demo-mysql -n automationsaan
+helm uninstall prometheus -n automationsaan-prom-monitoring
+
+# Delete Kubernetes namespaces (if you want a full reset)
+kubectl delete namespace automationsaan
+kubectl delete namespace automationsaan-prom-monitoring
+
+# Remove downloaded Helm chart archives and extracted directories
+rm -f /home/ubuntu/mysql-*.tgz
+rm -rf /home/ubuntu/mysql
+rm -f /home/ubuntu/kube-prometheus-stack-*.tgz
+rm -rf /home/ubuntu/kube-prometheus-stack
+
+# (Optional) Clean up Docker
+sudo docker system prune -af
+```
+
+**Note:**
+- The playbook is idempotent, but Helm will not overwrite an existing release with the same name. Always clean up before re-running the playbook for a fresh install.
+- If you change chart versions, update the playbook's unarchive task to match the new filename.
+- For troubleshooting, see the Troubleshooting section below.
 
 ## Troubleshooting
 

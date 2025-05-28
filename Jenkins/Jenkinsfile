@@ -118,11 +118,11 @@ pipeline {
         stage ("Deploy") {
             steps {
                 script {
-                    echo '<--------------- Deploy Started --------------->'
+                    echo '<--------------- Helm Deploy Started --------------->'
                     // Deploy the Docker image to the Kubernetes cluster
-                    sh 'kubernetes/deploy.sh' // Execute the deployment script
+                    sh 'helm install hello-world-springboot ' // Execute the deployment script
                     // Note: Ensure deploy.sh is executable and correctly configured for your environment
-                    echo '<--------------- Deploy Ended --------------->'
+                    echo '<--------------- Helm Deploy Ended --------------->'
                 }
             }
         }

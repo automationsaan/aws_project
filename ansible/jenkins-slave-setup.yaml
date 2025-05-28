@@ -239,7 +239,7 @@
 
     # Install MySQL using Bitnami Helm chart
     - name: Install MySQL using Bitnami Helm chart
-      command: helm install demo-mysql bitnami/mysql --namespace automationsaan --set auth.rootPassword=changeme --set primary.persistence.enabled=false
+      command: helm install demo-mysql bitnami/mysql --namespace automationsaan --create-namespace --set auth.rootPassword=changeme --set primary.persistence.enabled=false
       register: helm_mysql_install
       changed_when: helm_mysql_install.rc == 0
       failed_when: helm_mysql_install.rc != 0
@@ -251,9 +251,88 @@
       changed_when: helm_mysql_pull.rc == 0
       failed_when: helm_mysql_pull.rc != 0
 
+    # Add Prometheus Community Helm repository (contains kube-prometheus-stack for Prometheus + Grafana)
+    - name: Add Prometheus Community Helm repository
+      command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      register: helm_repo_add_prometheus
+      changed_when: helm_repo_add_prometheus.rc == 0
+      failed_when: helm_repo_add_prometheus.rc != 0
+
+    # Update Helm repositories to fetch latest charts, including kube-prometheus-stack
+    - name: Update Helm repositories (after adding Prometheus)
+      command: helm repo update
+      register: helm_repo_update_prometheus
+      changed_when: helm_repo_update_prometheus.rc == 0
+      failed_when: helm_repo_update_prometheus.rc != 0
+
+    # Install kube-prometheus-stack (Prometheus + Grafana + exporters) using Helm
+    # This chart deploys a full monitoring stack: Prometheus, Grafana, Alertmanager, node-exporter, and more
+    # The namespace 'automationsaan-prom-monitoring' will be created if it does not exist
+    # The --set prometheus.prometheusSpec.maximumStartupDurationSeconds=300 flag is required to avoid CRD validation errors (must be >= 60)
+    # The following flags expose both Prometheus and Grafana via AWS LoadBalancer services
+    - name: Install kube-prometheus-stack (Prometheus + Grafana) using Helm chart
+      command: >
+        helm install prometheus prometheus-community/kube-prometheus-stack
+        --namespace automationsaan-prom-monitoring
+        --create-namespace
+        --set prometheus.prometheusSpec.maximumStartupDurationSeconds=300
+        --set prometheus.service.type=LoadBalancer
+        --set grafana.service.type=LoadBalancer
+      register: helm_kube_prom_stack_install
+      changed_when: helm_kube_prom_stack_install.rc == 0
+      failed_when: helm_kube_prom_stack_install.rc != 0
+
+    # Optionally pull the kube-prometheus-stack Helm chart package to local for inspection/offline use
+    # The chart archive will be saved to /home/ubuntu for easy access
+    - name: Pull prometheus-community/kube-prometheus-stack Helm chart package to /home/ubuntu
+      command: helm pull prometheus-community/kube-prometheus-stack --destination /home/ubuntu
+      register: helm_kube_prom_stack_pull
+      changed_when: helm_kube_prom_stack_pull.rc == 0
+      failed_when: helm_kube_prom_stack_pull.rc != 0
+
+    # Unpack the kube-prometheus-stack Helm chart archive in /home/ubuntu for inspection
+    - name: Extract kube-prometheus-stack Helm chart package in /home/ubuntu
+      unarchive:
+        src: /home/ubuntu/kube-prometheus-stack-72.6.3.tgz
+        dest: /home/ubuntu/
+        remote_src: yes
+      register: helm_kube_prom_stack_unarchive
+      changed_when: helm_kube_prom_stack_unarchive.changed
+      failed_when: helm_kube_prom_stack_unarchive.failed
+
+    # (Optional) Commented out: Remove previous Prometheus-only install if present
+    # - name: Uninstall old Prometheus-only Helm release (if exists)
+    #   command: helm uninstall demo-prometheus -n automationsaan-prom-monitoring
+    #   ignore_errors: yes
+    #   changed_when: false
+    #   failed_when: false
   handlers:
     # Restart Docker if BuildKit or config changes
     - name: Restart Docker
       service:
         name: docker
         state: restarted
+
+# NOTES: Accessing Grafana and Prometheus after Service Type Change
+# ----------------------------------------------------------------
+# After running this playbook, both Grafana and Prometheus will be exposed via AWS LoadBalancer services.
+# To access them:
+#
+# 1. Get the external DNS/hostname for each service:
+#    kubectl get svc -n automationsaan-prom-monitoring
+#
+#    Example output:
+#    NAME                TYPE           CLUSTER-IP      EXTERNAL-IP                                                               PORT(S)   AGE
+#    prometheus-grafana  LoadBalancer   172.20.45.167   a766a756a42b943ac99dfb375972f2a1-1304622396.us-west-2.elb.amazonaws.com   80:...   ...
+#    prometheus-...      LoadBalancer   ...             ...                                                                       9090:...  ...
+#
+# 2. Access Grafana:
+#    http://<EXTERNAL-IP-or-DNS>:80
+#    (Default credentials: admin/prom-operator unless overridden)
+#
+# 3. Access Prometheus:
+#    http://<EXTERNAL-IP-or-DNS>:9090
+#
+# 4. If you do not see an EXTERNAL-IP immediately, wait a few minutes for AWS to provision the ELB.
+#
+# 5. For security, restrict access to these LoadBalancers using AWS security groups as needed.
