@@ -26,42 +26,48 @@ Below is a high-level architecture diagram of the AWS DevOps environment provisi
 
 ```mermaid
 graph TD
-    Developer(("Developer/CI"))
-    JenkinsMaster["Jenkins Master (EC2, Public)"]
-    JenkinsSlave["Jenkins Slave (EC2, Public)"]
-    Ansible["Ansible Server (EC2, Public)"]
-    SonarQube["SonarQube/SonarCloud (SaaS or EC2)"]
-    Artifactory["JFrog Artifactory (SaaS or EC2)"]
-    ECR["Amazon ECR (Optional)"]
-    subgraph EKS[Amazon EKS Cluster]
-        AppPods["App Pods (Spring Boot)"]
-        MySQL["MySQL (Bitnami Helm)"]
-        PromGraf["Prometheus & Grafana (Helm)"]
-        LB["AWS LoadBalancer"]
+    subgraph AWS_Cloud["AWS Cloud"]
+        direction TB
+        Developer((Developer/CI))
+        JenkinsMaster[Jenkins Master\n(EC2, Public)]
+        JenkinsSlave[Jenkins Slave\n(EC2, Public)]
+        Ansible[Ansible Server\n(EC2, Public)]
+        SonarQube[SonarQube/SonarCloud\n(SaaS or EC2)]
+        Artifactory[JFrog Artifactory\n(SaaS or EC2)]
+        ECR[Amazon ECR\n(Optional)]
+        subgraph EKS[Amazon EKS Cluster]
+            AppPods[App Pods\n(Spring Boot)]
+            MySQL[MySQL (Bitnami Helm)]
+            PromGraf[Prometheus & Grafana\n(Helm)]
+            LB[AWS LoadBalancer]
+        end
     end
 
-    Developer-->|"SSH/HTTP"|JenkinsMaster
-    JenkinsMaster-->|"SSH"|JenkinsSlave
-    JenkinsMaster-->|"SSH"|Ansible
-    JenkinsMaster-->|"API"|SonarQube
-    JenkinsMaster-->|"API"|Artifactory
-    JenkinsMaster-->|"API"|ECR
-    JenkinsMaster-->|"kubectl/AWS CLI"|EKS
-    JenkinsSlave-->|"Builds/Pushes"|Artifactory
-    JenkinsSlave-->|"Builds/Pushes"|ECR
-    JenkinsSlave-->|"kubectl/AWS CLI"|EKS
-    Ansible-->|"Configures"|JenkinsMaster
-    Ansible-->|"Configures"|JenkinsSlave
-    Ansible-->|"Configures"|EKS
-    SonarQube-->|"Quality Gate"|JenkinsMaster
-    Artifactory-->|"Images"|EKS
-    ECR-->|"Images"|EKS
-    EKS-->|"App"|AppPods
-    EKS-->|"DB"|MySQL
-    EKS-->|"Monitoring"|PromGraf
-    PromGraf-->|"Exposed via"|LB
-    LB-->|"External Access"|Developer
-    MySQL-->|"App DB"|AppPods
+    Developer-->|SSH/HTTP|JenkinsMaster
+    JenkinsMaster-->|SSH|JenkinsSlave
+    JenkinsMaster-->|SSH|Ansible
+    JenkinsMaster-->|API|SonarQube
+    JenkinsMaster-->|API|Artifactory
+    JenkinsMaster-->|API|ECR
+    JenkinsMaster-->|kubectl/AWS CLI|EKS
+    JenkinsSlave-->|Builds/Pushes|Artifactory
+    JenkinsSlave-->|Builds/Pushes|ECR
+    JenkinsSlave-->|kubectl/AWS CLI|EKS
+    Ansible-->|Configures|JenkinsMaster
+    Ansible-->|Configures|JenkinsSlave
+    Ansible-->|Configures|EKS
+    SonarQube-->|Quality Gate|JenkinsMaster
+    Artifactory-->|Images|EKS
+    ECR-->|Images|EKS
+    EKS-->|Runs|AppPods
+    EKS-->|Runs|MySQL
+    EKS-->|Runs|PromGraf
+    PromGraf-->|Exposed via|LB
+    LB-->|External Access|Developer
+    MySQL-->|App DB|AppPods
+
+    classDef infra fill:#f9f,stroke:#333,stroke-width:1px;
+    class JenkinsMaster,JenkinsSlave,Ansible,SonarQube,Artifactory,ECR,AppPods,MySQL,PromGraf,LB infra;
 ```
 
 **Legend:**
