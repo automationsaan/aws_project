@@ -56,9 +56,9 @@ graph TD
     SonarQube-->|"Quality Gate"|JenkinsMaster
     Artifactory-->|"Images"|EKS
     ECR-->|"Images"|EKS
-    EKS-->|"Runs"|AppPods
-    EKS-->|"Runs"|MySQL
-    EKS-->|"Runs"|PromGraf
+    EKS-->|"Runs App"|AppPods
+    EKS-->|"Runs DB"|MySQL
+    EKS-->|"Runs Monitoring"|PromGraf
     PromGraf-->|"Exposed via"|LB
     LB-->|"External Access"|Developer
     MySQL-->|"App DB"|AppPods
